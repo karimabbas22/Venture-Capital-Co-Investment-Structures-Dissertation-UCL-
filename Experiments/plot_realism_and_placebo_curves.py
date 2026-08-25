@@ -1,19 +1,17 @@
 """
-Experiments/plot_realism_and_placebo_curves.py — the last two dense-grid
-line-graph curves from the revision plan (Phase 1 / figure spec F12, F13),
-not covered by Scripts/11_aggregate_robustness_report.py because they need
-Experiments/output/placebo_vs_true_hub_comparison.csv, which only exists
-after Experiments/placebo_hub_removal.py has run.
+Experiments/plot_realism_and_placebo_curves.py — two dense-grid comparison
+plots not covered by Scripts/11_aggregate_robustness_report.py, because
+they need Experiments/output/placebo_vs_true_hub_comparison.csv, which only
+exists after Experiments/placebo_hub_removal.py has run.
 
-RUN ORDER MATTERS — this deviates from the revision plan's stated order
-("07 -> 10 -> placebo -> 11"). placebo_hub_removal.py's own comparison step
+Run order matters here. placebo_hub_removal.py's own comparison step
 (compare_against_true_hub_removal) reads
 Data/processed/models/T7/perturbation/robustness_summary_wide.csv, which is
-written by script 11. If placebo runs BEFORE 11, that file is still the
-OLD/stale summary (pre-densification, K in {5,10,25} only), so the
-placebo-vs-true-hub comparison silently collapses to 3 points even though
-placebo itself computed all 25 K values. Correct order for the dense
-re-run:
+written by script 11. If placebo runs before 11, that file is still the
+stale summary from before the K grid was densified (K in {5,10,25} only),
+so the placebo-vs-true-hub comparison silently collapses to 3 points even
+though placebo itself computed all 25 K values. Correct order for the
+dense re-run:
 
     07_run_perturbation_tests.py
     10_run_gnn_perturbation_tests.py
@@ -22,21 +20,21 @@ re-run:
     Experiments/plot_realism_and_placebo_curves.py   <- this script, last
 
 Writes (both to Experiments/output/):
-    hub_removal_vs_placebo.png        F12 — true hub removal (solid) vs.
-                                       placebo random-K removal (dashed,
-                                       +/- std band) per model, vs K.
-                                       The gap between the line families is
-                                       the "hub removal is not just any-K-
-                                       removal" result.
-    random_vs_preferential_addition.png  F13 — random_edge_addition vs.
-                                       preferential_edge_addition, delta
-                                       ROC-AUC and flip rate vs. budget.
-                                       GNN solid, tabular mean dashed (band
-                                       = std across the 5 tabular
-                                       classifiers' means). If preferential
-                                       addition damages more at equal
-                                       budget, that's the answer to the
-                                       supervisor's realism question.
+    hub_removal_vs_placebo.png           true hub removal (solid) vs.
+                                          placebo random-K removal (dashed,
+                                          +/- std band) per model, vs K.
+                                          The gap between the line families
+                                          is the "hub removal is not just
+                                          any-K-removal" result.
+    random_vs_preferential_addition.png  random_edge_addition vs.
+                                          preferential_edge_addition, delta
+                                          ROC-AUC and flip rate vs. budget.
+                                          GNN solid, tabular mean dashed
+                                          (band = std across the 5 tabular
+                                          classifiers' means). Whether
+                                          preferential addition does more
+                                          damage at equal budget is the
+                                          question this plot answers.
 """
 
 import os
@@ -60,7 +58,7 @@ PLACEBO_PATH = os.path.join(OUT_DIR, "placebo_vs_true_hub_comparison.csv")
 def plot_hub_vs_placebo():
     if not os.path.exists(PLACEBO_PATH):
         print(f"[WARN] {PLACEBO_PATH} not found — run Experiments/placebo_hub_removal.py "
-              f"(after script 11) first. Skipping F12.")
+              f"(after script 11) first. Skipping hub-removal-vs-placebo plot.")
         return
 
     df = pd.read_csv(PLACEBO_PATH).sort_values(["model", "hub_k"])
@@ -99,7 +97,8 @@ def plot_hub_vs_placebo():
 
 def plot_addition_comparison():
     if not os.path.exists(WIDE_PATH):
-        print(f"[WARN] {WIDE_PATH} not found — run script 11 first. Skipping F13.")
+        print(f"[WARN] {WIDE_PATH} not found — run script 11 first. "
+              f"Skipping random-vs-preferential-addition plot.")
         return
 
     wide = pd.read_csv(WIDE_PATH)
@@ -109,7 +108,7 @@ def plot_addition_comparison():
     if missing:
         print(f"[WARN] Missing perturbation type(s) in {WIDE_PATH}: {missing}. "
               f"Re-run script 07/10 with the updated experiment_config.json "
-              f"(perturbation_types now includes preferential_edge_addition). Skipping F13.")
+              f"(perturbation_types now includes preferential_edge_addition).")
         return
 
     ptype_colors = {"random_edge_addition": "tab:blue", "preferential_edge_addition": "tab:red"}
@@ -153,8 +152,8 @@ def plot_addition_comparison():
     plt.close(fig)
     print(f"Wrote {out_path}")
 
-    # Quick console readout of which is more damaging at the max budget, for
-    # the "does preferential addition do more damage" writeup paragraph.
+    # Quick console readout of which perturbation is more damaging at the
+    # max budget.
     max_b = sub["budget"].max()
     at_max = sub[sub["budget"] == max_b].groupby("perturb_type")["delta_roc_auc_mean"].mean()
     print(f"\n  Mean ΔROC-AUC across all models @ budget={max_b}:")
@@ -163,7 +162,7 @@ def plot_addition_comparison():
 
 
 def main():
-    print(f"{'='*70}\n  REALISM (F13) AND PLACEBO (F12) CURVES\n{'='*70}")
+    print("Realism and placebo curves")
     plot_hub_vs_placebo()
     plot_addition_comparison()
     print(f"\nAll outputs → {OUT_DIR}")

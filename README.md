@@ -1,8 +1,3 @@
-<title>Reproduction Package README</title>
-# Reproduction Package
-
-This is a self-contained copy of the code needed to reproduce the empirical pipeline for this dissertation, from raw data through to the final aggregated report. It contains **code only** — no data, no trained models, no results, no figures. Running the pipeline in order regenerates everything.
-
 ## What this pipeline does
 
 Starting from raw VC deal, exit, and company records, the pipeline:

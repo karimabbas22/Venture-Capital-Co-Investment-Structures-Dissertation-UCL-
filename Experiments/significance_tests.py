@@ -1,8 +1,8 @@
 """
 Experiments/significance_tests.py -- formal statistical inference on the
-headline ROC-AUC comparisons, addressing a supervisor-review finding: every
-delta reported elsewhere (baseline vs network per model class, GNN vs best
-tabular, etc.) was a bare point estimate with no significance test. With
+headline ROC-AUC comparisons: every delta reported elsewhere (baseline vs
+network per model class, GNN vs best tabular, etc.) was a bare point
+estimate with no significance test. With
 test n~3,280 (~730 positives), Hanley-McNeil back-of-envelope AUC standard
 errors are plausibly 0.01-0.02 -- comparable to or larger than several of
 the reported deltas -- so this matters, not a formality.
@@ -11,7 +11,7 @@ Standalone, read-only with respect to Scripts/ and the trained artifacts:
 reloads already-trained models (no retraining) and already-saved test
 splits, computes predictions fresh, and runs:
   1. DeLong's test (Sun & Xu 2014 fast algorithm) for paired ROC-AUC
-     comparisons on the SAME test set -- the statistically correct test
+     comparisons on the same test set -- the statistically correct test
      here, since all models are scored on (a subset of) the same startups,
      not independent samples.
   2. Percentile bootstrap confidence intervals (5,000 resamples) on every
@@ -65,7 +65,7 @@ NETWORK_FILES = {
 }
 
 
-# ── Fast DeLong (Sun & Xu 2014) ───────────────────────────────────────────────
+# Fast DeLong (Sun & Xu 2014)
 def _compute_midrank(x):
     J = np.argsort(x)
     Z = x[J]
@@ -106,7 +106,7 @@ def _fast_delong(preds_sorted_transposed, m):
 
 
 def delong_test(y_true, prob_a, prob_b):
-    """Paired DeLong test for two classifiers scored on the SAME instances.
+    """Paired DeLong test for two classifiers scored on the same instances.
     Returns (auc_a, auc_b, z_stat, p_value)."""
     y_true = np.asarray(y_true)
     order = np.argsort(-y_true, kind="mergesort")  # positives first
@@ -171,7 +171,7 @@ def bootstrap_delta_ci(y_true, prob_a, prob_b, n_boot=N_BOOTSTRAP, seed=SEED):
     return float(delta), float(ci_low), float(ci_high), float(min(p, 1.0))
 
 
-# ── Load predictions for every model on the aligned test set ─────────────────
+# Load predictions for every model on the aligned test set
 def load_all_predictions():
     # Aligned on company_name alone: verified zero duplicate company_name
     # values within this specific test split (33/3280 rows have a missing
@@ -191,7 +191,7 @@ def load_all_predictions():
         preds[f"{name}_Baseline"] = bundle["model"].predict_proba(X)[:, 1]
 
     # Network models were trained on firms_with_network_T7.parquet -- re-derive
-    # that script's test split, then align to the SAME row order as baseline.
+    # that script's test split, then align to the same row order as baseline.
     import pipeline_core as pc
     firms_net = pd.read_parquet(os.path.join(DATA, "firms_with_network_T7.parquet"))
     firms_net_eng = pc.engineer_network_features(firms_net, "exit_within_T", "first_deal_date")
@@ -228,7 +228,7 @@ def load_all_predictions():
 
 
 def main():
-    print(f"{'='*70}\n  SIGNIFICANCE TESTS: headline ROC-AUC comparisons\n{'='*70}")
+    print("\nSignificance tests: headline ROC-AUC comparisons")
     y, preds = load_all_predictions()
     print(f"Aligned test set: {len(y):,} startups, {int(y.sum()):,} positive\n")
 
@@ -254,7 +254,7 @@ def main():
         ("LogReg_Network", "RandomForest_Baseline"),
     ]
 
-    print(f"\n{'='*70}\n  PAIRED COMPARISONS (DeLong test + bootstrap)\n{'='*70}")
+    print("\nPaired comparisons (DeLong test + bootstrap)")
     print(f"{'A vs B':<38s} {'ΔAUC':>8s} {'DeLong p':>10s} {'Boot 95% CI':>20s} {'Boot p':>8s}  Sig?")
     comp_rows = []
     for a, b in comparisons:

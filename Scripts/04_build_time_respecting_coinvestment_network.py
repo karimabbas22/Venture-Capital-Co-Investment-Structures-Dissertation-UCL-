@@ -2,16 +2,15 @@
 04_build_time_respecting_coinvestment_network.py — as-of-date co-investment
 graph snapshots and startup-level network feature aggregation.
 
-Protocol
-────────
+Protocol:
 1. A grid of quarterly snapshot dates spans 1999-12-31 … 2017-12-31 (the
    grid's start is cosmetic only -- since ENTRY_START=2010-01-01, no
    startup anchor ever needs a grid point before 2009-12-31 in practice;
    the graph's actual historical depth comes from deals.parquet itself
    covering 2000-2024, not from this grid's nominal start).
-2. For each snapshot date s, a co-investment graph is built from deals with
-   investment_date <= s ONLY -- unbounded below, so every snapshot already
-   draws on the FULL available history up to s, including pre-2010 deals.
+2. For each snapshot date s, a co-investment graph is built only from deals
+   with investment_date <= s -- unbounded below, so every snapshot already
+   draws on the full available history up to s, including pre-2010 deals.
 3. Each startup is assigned the latest snapshot <= its anchor date, so all
    graph features are computed from a graph that existed at (slightly before)
    its anchor.
@@ -28,8 +27,7 @@ Aggregated to startup level (across first-round investors):
   max_eigenvector_lcc, mean_clustering, has_top_pagerank_investor,
   share_newcomer_investors, n_investors_first_round
 
-Outputs
-───────
+Outputs:
   Data/processed/investor_features_by_snapshot.parquet
   Data/processed/firms_with_network_T7.parquet
 """
@@ -57,7 +55,7 @@ METRIC_COLS = ["degree", "weighted_degree", "betweenness_centrality",
 def main():
     set_global_seed()
 
-    # ── 1. Load ───────────────────────────────────────────────────────────────
+    # Load
     print("Loading data ...")
     deals       = pd.read_parquet(os.path.join(DATA, "deals.parquet"))
     firms_panel = pd.read_parquet(os.path.join(DATA, "firms_panel.parquet"))
@@ -77,7 +75,7 @@ def main():
           f"{deals['investment_date'].max().date()})")
     print(f"  firms_panel         : {len(firms_panel):,} startups")
 
-    # ── 2. Snapshot grid + per-startup assignment ────────────────────────────
+    # Snapshot grid and per-startup assignment
     snapshot_dates = build_snapshot_dates()
     firms_panel = firms_panel.copy()
     firms_panel["snapshot_date"] = assign_snapshot(
@@ -88,7 +86,7 @@ def main():
           f"({snapshot_dates[0].date()} – {snapshot_dates[-1].date()}); "
           f"{len(needed)} needed by the panel")
 
-    # ── 3. Per-snapshot graphs + metrics ──────────────────────────────────────
+    # Per-snapshot graphs and metrics
     all_metrics = []
     for i, snap in enumerate(needed):
         t0 = time.time()
@@ -115,7 +113,7 @@ def main():
     print(f"\nSaved investor_features_by_snapshot.parquet "
           f"({len(inv_by_snap):,} node-snapshot rows)")
 
-    # ── 4. Startup-level network features ─────────────────────────────────────
+    # Startup-level network features
     print("\nComputing startup-level network features ...")
 
     fp = firms_panel[["company_name", "first_deal_date", "snapshot_date"]]

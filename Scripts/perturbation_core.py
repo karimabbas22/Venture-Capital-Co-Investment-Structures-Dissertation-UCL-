@@ -9,8 +9,8 @@ by the tabular pipeline (scripts 04/05/07). For the bipartite PyG graph
 trip the `co_invests_with` relation through the same functions rather than
 duplicating them; `node_feature_noise()` is GNN-exclusive (see below).
 
-All perturbation functions take a budget as a FRACTION of existing edges
-(e.g. 0.05 = 5%) and a seed for reproducibility, and return a NEW graph —
+All perturbation functions take a budget as a fraction of existing edges
+(e.g. 0.05 = 5%) and a seed for reproducibility, and return a new graph —
 inputs are never mutated in place, matching the rest of the pipeline's
 copy-on-write convention (`build_coinvestment_snapshot` etc.).
 """
@@ -23,9 +23,7 @@ import numpy as np
 import networkx as nx
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  Perturbation primitives (operate on edge lists — adapter-agnostic)
-# ════════════════════════════════════════════════════════════════════════════
+# Perturbation primitives (operate on edge lists — adapter-agnostic)
 
 def random_edge_deletion(edges: list[tuple], budget: float, seed: int) -> list[tuple]:
     """Remove a random `budget` fraction of edges."""
@@ -70,8 +68,8 @@ def preferential_edge_addition(edges: list[tuple], nodes: list, degree_map: dict
     Stuart, 2001; Gu et al., 2022), so unrecorded ties are far more likely
     to sit between already-active investors than between two arbitrary
     nodes. This is the realistic counterpart to random_edge_addition,
-    which is retained as the uninformative null (see the perturbation
-    realism argument in the revision plan / methodology section).
+    which is retained as the uninformative null against which this more
+    realistic perturbation can be compared.
 
     Implementation: each endpoint is drawn independently with probability
     proportional to (degree + 1) -- the +1 Laplace-smooths zero-degree
@@ -149,12 +147,10 @@ def hub_removal(G: nx.Graph, hub_ids: list) -> nx.Graph:
     return G_pert
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  HeteroData (GNN) helpers — same-type (investor-investor) edge relation
-#  reuses the nx.Graph perturbation functions above via conversion; node
-#  feature noise is GNN-exclusive (the tabular pipeline's "features" are
-#  graph-derived downstream, not stored node attributes to jitter).
-# ════════════════════════════════════════════════════════════════════════════
+# HeteroData (GNN) helpers — same-type (investor-investor) edge relation
+# reuses the nx.Graph perturbation functions above via conversion; node
+# feature noise is GNN-exclusive (the tabular pipeline's "features" are
+# graph-derived downstream, not stored node attributes to jitter).
 
 def hetero_edges_to_nx(edge_index, num_nodes: int) -> nx.Graph:
     """Convert a symmetric same-type edge_index tensor (as stored after
@@ -195,11 +191,11 @@ def node_feature_noise(x, sigma_scale: float, seed: int):
 
 
 def recompute_investor_features(G_pert: nx.Graph, num_investor: int, investor_preprocessor):
-    """Recompute the 6 raw investor centrality metrics from a PERTURBED
+    """Recompute the 6 raw investor centrality metrics from a perturbed
     co-investment graph and transform them through the already-fitted
     (train-only) investor preprocessor.
 
-    This closes a documented asymmetry between the two perturbation tracks:
+    This closes an asymmetry between the two perturbation tracks:
     script 07 (tabular) recomputes centrality features from the damaged
     graph before re-scoring, but the GNN track originally left investor
     node features frozen at their clean-graph values after topology-only
@@ -208,8 +204,7 @@ def recompute_investor_features(G_pert: nx.Graph, num_investor: int, investor_pr
     makes both tracks' perturbation protocol identical (perturb graph ->
     recompute real centrality metrics -> re-score), so GNN vs. tabular
     robustness magnitudes become directly comparable, not just
-    qualitatively similar (see results_and_methodology.md Section 7.4,
-    since revised).
+    qualitatively similar.
 
     G_pert must use integer node labels 0..num_investor-1 (as produced by
     hetero_edges_to_nx), so the recomputed feature rows line up with the
@@ -229,9 +224,7 @@ def recompute_investor_features(G_pert: nx.Graph, num_investor: int, investor_pr
     return torch.tensor(np.asarray(X), dtype=torch.float)
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  Dispatcher
-# ════════════════════════════════════════════════════════════════════════════
+# Dispatcher
 
 EDGE_LIST_PERTURBATIONS = {
     "random_edge_deletion": lambda edges, nodes, degree_map, budget, seed:
@@ -247,7 +240,7 @@ EDGE_LIST_PERTURBATIONS = {
 
 def perturb_graph(G: nx.Graph, perturbation_type: str, budget: float, seed: int) -> nx.Graph:
     """Dispatch to the appropriate perturbation function; always returns a
-    NEW nx.Graph (same node set, perturbed edge set), never mutates G."""
+    new nx.Graph (same node set, perturbed edge set), never mutates G."""
     if perturbation_type == "edge_rewiring":
         return edge_rewiring(G, budget, seed)
 

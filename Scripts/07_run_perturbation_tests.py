@@ -4,10 +4,10 @@ robust to perturbations of the investor co-investment network.
 
 Protocol: for each perturbation scenario (type x budget x seed, or hub
 removal by K), perturb the investor-investor graph, recompute network
-features, rerun ALL trained network models with the new features, and
+features, rerun all trained network models with the new features, and
 compare predictions against each model's own unperturbed (clean) baseline
 via stability_metrics.evaluate_stability(). Perturbed features are computed
-ONCE per (type, budget, seed) combination and reused across all 5 models —
+once per (type, budget, seed) combination and reused across all 5 models —
 graph rebuilding dominates runtime, model scoring is comparatively free.
 
 Config (budgets, seeds, perturbation types) lives in experiment_config.json
@@ -90,7 +90,7 @@ def main():
     set_global_seed()
     cfg = load_experiment_config(CONFIG_PATH)
 
-    print(f"{'='*70}\n  PERTURBATION ANALYSIS (all network models)\n{'='*70}")
+    print("\nPerturbation analysis (all network models)")
     print(f"Config: budgets={cfg['budgets']}  seeds={cfg['seeds']}  "
           f"types={cfg['perturbation_types']}  hub_k={cfg['hub_removal_k']}")
 
@@ -173,7 +173,7 @@ def main():
                     transform_preprocessor(bundle["preprocessor"], test_pert))[:, 1]
                 for name, bundle in models.items()}
 
-    # ── Edge-level, budget-indexed perturbations ────────────────────────────
+    # Edge-level, budget-indexed perturbations
     for ptype in cfg["perturbation_types"]:
         for budget in cfg["budgets"]:
             for seed in cfg["seeds"]:
@@ -191,7 +191,7 @@ def main():
                 print(f"  {ptype:26s} budget={budget:<6} seed={seed}  "
                       f"({len(models)} models, {time.time()-t0:.1f}s)")
 
-    # ── Hub removal (K-indexed, not budget-indexed) ─────────────────────────
+    # Hub removal (K-indexed, not budget-indexed)
     for K in cfg["hub_removal_k"]:
         t0 = time.time()
         hub_ids = hub_candidates.head(K)["investor_org_id"].tolist()
@@ -206,7 +206,7 @@ def main():
             all_rows.append(row)
         print(f"  hub_removal K={K:<4}  ({len(models)} models, {time.time()-t0:.1f}s)")
 
-    # ── Save ─────────────────────────────────────────────────────────────────
+    # Save
     summary_df = pd.DataFrame(all_rows)
     summary_df.to_csv(os.path.join(OUT_DIR, "perturbation_summary.csv"), index=False)
     with open(os.path.join(OUT_DIR, "perturbation_results.json"), "w") as f:
@@ -217,7 +217,7 @@ def main():
             "config": cfg,
         }, f, indent=2)
 
-    print(f"\n{'='*70}\n  PERTURBATION SUMMARY (mean over seeds, by model/type/budget)\n{'='*70}")
+    print("\nPerturbation summary (mean over seeds, by model/type/budget)")
     agg_cols = ["delta_roc_auc", "flip_rate", "mean_abs_delta_p", "spearman_rho",
                "jaccard_top50", "delta_brier"]
     perturbed = summary_df[summary_df["perturb_type"] != "clean"]

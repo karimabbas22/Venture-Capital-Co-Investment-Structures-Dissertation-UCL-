@@ -61,9 +61,7 @@ def main():
     deals["investor_org_id"] = deals["investor_org_id"].fillna(
         deals["investor_name"]).astype(str)
 
-    print(f"{'='*70}")
-    print(f"  TEMPORAL NETWORK COMPARISON")
-    print(f"{'='*70}")
+    print("\nTEMPORAL NETWORK COMPARISON")
     print(f"  Period 1: {PERIOD_1[0].date()} – {PERIOD_1[1].date()}")
     print(f"  Period 2: {PERIOD_2[0].date()} – {PERIOD_2[1].date()}")
 
@@ -84,9 +82,7 @@ def main():
 
     # Comparison table
     comp = pd.DataFrame(results)
-    print(f"\n{'='*70}")
-    print("  STRUCTURAL COMPARISON")
-    print(f"{'='*70}")
+    print("\nSTRUCTURAL COMPARISON")
     print(comp.to_string(index=False))
 
     # Growth metrics

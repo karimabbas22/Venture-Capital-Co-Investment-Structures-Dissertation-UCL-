@@ -1,16 +1,16 @@
 """
 Experiments/full_raw_features_test.py -- decomposes the GNN's clean-graph
-AUC advantage into "richer inputs" vs "architecture", addressing a
-supervisor-style review point: the GNN consumes 6 raw per-snapshot investor
-metrics (degree, weighted_degree, betweenness, pagerank, eigenvector_lcc,
-clustering_coeff) while the tabular network model consumes exactly ONE
-hand-aggregated summary (mean_pagerank). The GNN's higher point-estimate
-AUC (not statistically significant per Experiments/significance_tests.py,
-but still the natural next question) could be "message passing is a better
-architecture" or simply "the GNN sees six numbers per investor and the
-tabular model sees one" -- these were previously conflated.
+AUC advantage into "richer inputs" vs "architecture". The GNN consumes 6
+raw per-snapshot investor metrics (degree, weighted_degree, betweenness,
+pagerank, eigenvector_lcc, clustering_coeff) while the tabular network
+model consumes exactly one hand-aggregated summary (mean_pagerank), so the
+GNN's higher point-estimate AUC (not statistically significant per
+Experiments/significance_tests.py, but still the natural next question)
+could be "message passing is a better architecture" or simply "the GNN
+sees six numbers per investor and the tabular model sees one" -- these
+were previously conflated.
 
-This builds an intermediate tabular condition: mean+max of ALL 6 raw
+This builds an intermediate tabular condition: mean+max of all 6 raw
 investor metrics (12 columns total) instead of just mean_pagerank, fed to
 the same 5 tabular classifiers. If this closes most of the gap to the
 GNN's 0.6582, the "architecture matters" claim weakens; if it doesn't,
@@ -204,7 +204,7 @@ def train_and_eval_variant(variant_name: str, df: pd.DataFrame, extra_network_co
 
 def main():
     set_global_seed()
-    print(f"{'='*70}\n  FULL RAW INVESTOR FEATURES TEST (decompose GNN's advantage)\n{'='*70}")
+    print("\nFull raw investor features test (decompose GNN's advantage)")
 
     firms = build_full_raw_features()
 
@@ -221,7 +221,7 @@ def main():
     res = pd.DataFrame(all_results)
     res.to_csv(os.path.join(OUT_DIR, "full_raw_features_results.csv"), index=False)
 
-    print(f"\n{'='*70}\n  SUMMARY\n{'='*70}")
+    print("\nSummary")
     print(f"{'Model':<14s}{'control':>10s}{'full_raw':>10s}{'delta':>10s}")
     pivot = res.pivot_table(index=res["model"].str.split("_").str[0], columns="variant", values="roc_auc")
     pivot = pivot[["control", "full_raw"]]

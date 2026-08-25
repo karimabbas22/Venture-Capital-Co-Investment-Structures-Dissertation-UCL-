@@ -43,7 +43,7 @@ def graph_diagnostics(name: str, data) -> None:
 def main():
     set_global_seed()
 
-    print(f"{'='*70}\n  BUILD HETEROGENEOUS BIPARTITE GRAPH  (T={T_YEARS}y)\n{'='*70}")
+    print(f"\nBuilding heterogeneous bipartite graph (T={T_YEARS}y)")
 
     deals = pd.read_parquet(os.path.join(DATA, "deals.parquet"))
     deals = deals[deals["investor_name"] != "Undisclosed Firm"].copy()

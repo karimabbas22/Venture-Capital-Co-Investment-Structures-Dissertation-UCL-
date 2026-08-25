@@ -9,16 +9,18 @@ split (train/val/test), each cut at its split's boundary date. Node types:
 investor-investor co-investment graph (pipeline_core.build_coinvestment_snapshot).
 
 Leakage discipline: 'invests_in' edges for a given startup are restricted
-to deals with investment_date <= that startup's OWN anchor (first_deal_date)
+to deals with investment_date <= that startup's own anchor (first_deal_date)
 -- not the split cutoff -- so no startup's own post-anchor funding rounds
 leak into its graph neighborhood. Since anchor = first investment date by
 definition, this naturally restricts to first-round syndicate deals only,
 matching the scope of the existing tabular network model.
 
-The co-investment ('co_invests_with') relation is built as a SINGLE
+The co-investment ('co_invests_with') relation is built as a single
 snapshot at the split's cutoff date -- a documented simplification vs. the
-tabular pipeline's per-startup quarterly snapshot assignment. See
-ROBUSTNESS_REFRAMING_PLAN.md, Section F, for the accepted trade-off.
+tabular pipeline's per-startup quarterly snapshot assignment. This trade-off
+is accepted because a per-startup snapshot graph would require rebuilding
+the co-investment network once per startup, which is computationally
+infeasible at this dataset's scale within a GNN training loop.
 """
 
 from __future__ import annotations
@@ -51,7 +53,7 @@ def build_hetero_graph(deals: pd.DataFrame, startups: pd.DataFrame,
     `cutoff_date`.
 
     If fit_preprocessors=True, fits new preprocessors on this split's data
-    (use ONLY for the train split) and returns
+    (use only for the train split) and returns
     (graph, startup_preprocessor, investor_preprocessor).
     Otherwise startup_preprocessor/investor_preprocessor must already be
     fit (on train) and are applied via .transform() only.
@@ -132,7 +134,7 @@ def build_hetero_graph(deals: pd.DataFrame, startups: pd.DataFrame,
 
 
 def remove_investor_nodes(data: HeteroData, remove_local_idx: set[int]) -> HeteroData:
-    """Return a NEW HeteroData with the given investor node LOCAL indices
+    """Return a new HeteroData with the given investor node local indices
     removed entirely (whole-node hub removal), reindexing every edge type
     that references 'investor' (invests_in, rev_invests_in, co_invests_with).
     Startup nodes/features/labels are untouched. Used by script 10's GNN

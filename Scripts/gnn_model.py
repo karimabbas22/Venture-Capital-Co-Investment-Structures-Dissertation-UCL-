@@ -5,10 +5,9 @@ graph.
 2-layer HeteroConv wrapping SAGEConv per relation (mean aggregation across
 relations targeting the same node type), classification head on startup
 node embeddings only. Deliberately avoids attention/transformer complexity
-as the default architecture -- see ROBUSTNESS_REFRAMING_PLAN.md, Section B,
-for the rationale (feasibility over novelty; this graph is small by GNN
-standards, and a transparent baseline is preferred for a master's
-dissertation).
+as the default architecture: this graph is small by GNN standards, and a
+transparent, easily-diagnosed baseline is preferred over novelty for a
+master's dissertation.
 """
 
 from __future__ import annotations

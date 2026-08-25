@@ -1,9 +1,8 @@
 """
-Experiments/cohort_year_ablation.py -- tests a specific methodological
-concern raised in a supervisor-style review: `cohort_year` is a raw numeric
-feature, but train is anchored <=2013 while test is anchored 2016-2017 --
-every test row has a cohort_year value NO tree-based model (RandomForest,
-HistGBM, XGBoost, LightGBM) ever saw during training. Tree splits cannot
+Experiments/cohort_year_ablation.py -- checks a concern with `cohort_year`
+as a raw numeric feature: train is anchored <=2013 while test is anchored
+2016-2017 -- every test row has a cohort_year value no tree-based model
+(RandomForest, HistGBM, XGBoost, LightGBM) ever saw during training. Tree splits cannot
 extrapolate beyond the maximum value seen in training, so any cohort_year
 split learned on train collapses to a constant decision for every test row
 -- cohort_year may be dead weight (or worse) for tree models specifically,
@@ -148,7 +147,7 @@ def train_and_eval(variant_name: str, feature_set: str, df: pd.DataFrame, num_co
 
 def main():
     set_global_seed()
-    print(f"{'='*70}\n  COHORT_YEAR ABLATION (tree-model temporal-extrapolation check)\n{'='*70}")
+    print("\nCOHORT_YEAR ABLATION (tree-model temporal-extrapolation check)")
 
     baseline_df = pd.read_parquet(os.path.join(DATA, "firms_panel.parquet"))
     network_df = pd.read_parquet(os.path.join(DATA, "firms_with_network_T7.parquet"))
@@ -167,7 +166,7 @@ def main():
     res = pd.DataFrame(all_results)
     res.to_csv(os.path.join(OUT_DIR, "cohort_year_ablation_results.csv"), index=False)
 
-    print(f"\n{'='*70}\n  SUMMARY: test ROC-AUC, with vs without cohort_year\n{'='*70}")
+    print("\nSUMMARY: test ROC-AUC, with vs without cohort_year")
     res["model_name"] = res["model"].str.replace(r"_(with|without)_cohort_year", "", regex=True)
     pivot = res.pivot_table(index=["feature_set", "model_name"], columns="variant", values="roc_auc")
     pivot = pivot[["with_cohort_year", "without_cohort_year"]]

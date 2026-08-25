@@ -1,12 +1,12 @@
 """
 Experiments/multiple_comparisons_correction.py -- applies a family-wise and a
 false-discovery-rate correction to the 8 DeLong-test p-values already computed
-in significance_tests.py, addressing a supervisor-style review gap: the
-"only LogReg's network lift survives at p=0.035" claim in
-results_and_methodology.md Section 2.5 uses an UNCORRECTED alpha=0.05 across
-8 comparisons drawn from overlapping/related model families. With 8 tests at
-alpha=0.05, the expected number of false positives under a true global null
-is 0.4 -- not negligible relative to the single "significant" result found.
+in significance_tests.py. The headline "only LogReg's network lift survives
+at p=0.035" claim rests on an uncorrected alpha=0.05 applied across 8
+comparisons drawn from overlapping/related model families, which is a gap
+worth closing directly. With 8 tests at alpha=0.05, the expected number of
+false positives under a true global null is 0.4 -- not negligible relative
+to the single "significant" result found.
 
 This is a pure post-processing step on already-computed p-values (no
 retraining, no new predictions) -- reads
@@ -14,7 +14,7 @@ Experiments/output/significance_comparisons.csv (produced by
 significance_tests.py) and adds two corrected-significance columns:
 
   1. Bonferroni (family-wise error rate control): reject if p < alpha/m.
-     Conservative -- controls the probability of ANY false positive across
+     Conservative -- controls the probability of any false positive across
      the family of 8 tests.
   2. Benjamini-Hochberg (false discovery rate control, alpha=0.05): sort
      p-values ascending, reject p_(k) if p_(k) <= (k/m)*alpha for the
@@ -66,7 +66,7 @@ def main():
     out_path = os.path.join(OUT_DIR, "significance_comparisons_corrected.csv")
     df.to_csv(out_path, index=False)
 
-    print(f"{'='*70}\n  MULTIPLE-COMPARISONS CORRECTION ({m} DeLong tests)\n{'='*70}")
+    print(f"\nMULTIPLE-COMPARISONS CORRECTION ({m} DeLong tests)")
     print(f"Bonferroni threshold: alpha/{m} = {bonf_threshold:.5f}")
     print(df[["comparison", "delong_p", "significant_at_05",
               "significant_bonferroni_05", "significant_bh_fdr_05"]].to_string(index=False))

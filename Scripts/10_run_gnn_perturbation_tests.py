@@ -1,13 +1,13 @@
 """
 10_run_gnn_perturbation_tests.py — perturbation robustness tests for the
 heterogeneous bipartite GNN (script 09), mirroring script 07's protocol
-for the tabular network models. Uses the SAME experiment_config.json and
+for the tabular network models. Uses the same experiment_config.json and
 stability_metrics.evaluate_stability() output schema, so results merge
 cleanly with script 07's for the combined robustness report (script 11).
 
 Perturbation protocol now matches script 07's exactly: after perturbing
 the co_invests_with edges (or removing hub nodes), investor node features
-are RECOMPUTED from the perturbed graph -- the 6 raw centrality metrics
+are recomputed from the perturbed graph -- the 6 raw centrality metrics
 are recalculated and pushed through the already-fitted (train-only)
 investor preprocessor via perturbation_core.recompute_investor_features()
 -- before re-scoring. Earlier versions of this script left investor
@@ -15,7 +15,7 @@ features frozen at their clean-graph values after a topology-only
 perturbation, which meant GNN and tabular robustness magnitudes were not
 directly comparable (only the qualitative pattern was). This is fixed
 here, so GNN-vs-tabular numbers can now be compared directly, not just
-by pattern (see results_and_methodology.md Section 7.4, since revised).
+by pattern.
 
 node_feature_noise is GNN-exclusive (see perturbation_core.py) -- the
 tabular pipeline's "features" are graph-derived downstream, not stored
@@ -76,7 +76,7 @@ def main():
     set_global_seed()
     cfg = load_experiment_config(CONFIG_PATH)
 
-    print(f"{'='*70}\n  GNN PERTURBATION ANALYSIS\n{'='*70}")
+    print("\nGNN perturbation analysis")
     print(f"Config: budgets={cfg['budgets']}  seeds={cfg['seeds']}  "
           f"edge_types={cfg['perturbation_types']}  hub_k={cfg['hub_removal_k']}")
 
@@ -110,8 +110,8 @@ def main():
     clean_row.update({"model": "GNN", "perturb_type": "clean", "budget": 0.0, "seed": -1})
     all_rows.append(clean_row)
 
-    # ── Edge-level perturbations (co_invests_with relation, investor features
-    #    recomputed from the perturbed graph before re-scoring) ─────────────
+    # Edge-level perturbations (co_invests_with relation, investor features
+    # recomputed from the perturbed graph before re-scoring)
     for ptype in cfg["perturbation_types"]:
         t0 = time.time()
         for budget in cfg["budgets"]:
@@ -127,7 +127,7 @@ def main():
         n_scenarios = len(cfg["budgets"]) * len(cfg["seeds"])
         print(f"  {ptype:26s} {n_scenarios} scenarios  ({time.time()-t0:.2f}s)")
 
-    # ── Node feature noise (GNN-exclusive; budget reused as sigma_scale) ────
+    # Node feature noise (GNN-exclusive; budget reused as sigma_scale)
     t0 = time.time()
     for budget in cfg["budgets"]:
         for seed in cfg["seeds"]:
@@ -143,7 +143,7 @@ def main():
     n_scenarios = len(cfg["budgets"]) * len(cfg["seeds"])
     print(f"  {'node_feature_noise':26s} {n_scenarios} scenarios  ({time.time()-t0:.2f}s)")
 
-    # ── Hub removal (K-indexed, not budget-indexed) ─────────────────────────
+    # Hub removal (K-indexed, not budget-indexed)
     t0 = time.time()
     coinv_edge_index = test_data[COINV_RELATION].edge_index
     degree = torch.bincount(coinv_edge_index[0], minlength=test_data["investor"].num_nodes)
@@ -163,7 +163,7 @@ def main():
         all_rows.append(row)
     print(f"  {'hub_removal':26s} {len(cfg['hub_removal_k'])} scenarios  ({time.time()-t0:.2f}s)")
 
-    # ── Save ─────────────────────────────────────────────────────────────────
+    # Save
     summary_df = pd.DataFrame(all_rows)
     out_path = os.path.join(OUT_DIR, "gnn_perturbation_summary.csv")
     summary_df.to_csv(out_path, index=False)
@@ -175,7 +175,7 @@ def main():
             "config": cfg,
         }, f, indent=2)
 
-    print(f"\n{'='*70}\n  GNN PERTURBATION SUMMARY (mean over seeds)\n{'='*70}")
+    print("\nGNN perturbation summary (mean over seeds)")
     agg_cols = ["delta_roc_auc", "flip_rate", "mean_abs_delta_p", "spearman_rho",
                "jaccard_top50", "delta_brier"]
     perturbed = summary_df[summary_df["perturb_type"] != "clean"]

@@ -2,7 +2,7 @@
 05_train_network_model.py — network-augmented exit prediction model.
 
 Adds co-investment network features (from script 04) on top of the baseline
-firm features (from script 03). Measures the LIFT that network information
+firm features (from script 03). Measures the lift that network information
 provides over the baseline.
 
 Outputs → Data/processed/models/T{T_YEARS}/
@@ -59,16 +59,16 @@ LABEL_COL    = "exit_within_T"
 DATE_COL     = "first_deal_date"
 RANDOM_STATE = SEED
 
-# ── Feature groups ────────────────────────────────────────────────────────────
+# Feature groups.
 # Baseline block matches the reduced set in script 03 (same rows, same split,
 # strictly comparable) via pipeline_core's shared constants. Network block is
-# deliberately parsimonious per the literature-informed edit: PageRank is
-# retained as the single preferred centrality measure (degree, betweenness,
-# and eigenvector centrality are collinear with it at r=0.72-0.95 and were
-# dropped), plus one explicit missing-network-coverage indicator. A
-# validation-only sweep confirmed mean_pagerank performs within tolerance of
-# the syndicate-size-based alternative (n_known_investors) across all 5
-# model classes, so PageRank is preferred as instructed rather than on
+# deliberately parsimonious: PageRank is retained as the single preferred
+# centrality measure (degree, betweenness, and eigenvector centrality are
+# collinear with it at r=0.72-0.95 and were dropped), plus one explicit
+# missing-network-coverage indicator. A validation-only sweep confirmed
+# mean_pagerank performs within tolerance of the syndicate-size-based
+# alternative (n_known_investors) across all 5 model classes, so PageRank is
+# preferred here as the more theoretically grounded choice rather than on
 # marginal AUC alone.
 ALL_NUM = FIRM_NUM + NET_NUM
 
@@ -81,7 +81,7 @@ def main():
     set_global_seed()
 
     df = pd.read_parquet(IN_FILE)
-    print(f"{'='*60}\n  NETWORK MODEL  (T={HORIZON}y)\n{'='*60}")
+    print(f"\nNETWORK MODEL (T={HORIZON}y)")
     print(f"Shape: {df.shape}")
 
     df = engineer_features(df)
@@ -113,7 +113,7 @@ def main():
         with open(baseline_path) as f:
             baseline = json.load(f)
 
-    # ── LogReg ────────────────────────────────────────────────────────────────
+    # LogReg
     def make_lr(C):
         return LogisticRegression(C=C, class_weight="balanced",
                                   solver="lbfgs", max_iter=1000,
@@ -124,7 +124,7 @@ def main():
     results.append(evaluate_with_tuned_threshold("LogReg_Network", clf, X_val, y_val, X_te, y_te, "Test", OUT_DIR, save_calibration_csv=True))
     saved["logreg_network"] = {"preprocessor": pre, "model": clf}
 
-    # ── RandomForest ──────────────────────────────────────────────────────────
+    # RandomForest
     def make_rf(max_depth, min_samples_leaf):
         return RandomForestClassifier(n_estimators=300, max_depth=max_depth,
                                       min_samples_leaf=min_samples_leaf,
@@ -137,7 +137,7 @@ def main():
     results.append(evaluate_with_tuned_threshold("RandomForest_Network", clf, X_val, y_val, X_te, y_te, "Test", OUT_DIR, save_calibration_csv=True))
     saved["rf_network"] = {"preprocessor": pre, "model": clf}
 
-    # ── HistGBM ───────────────────────────────────────────────────────────────
+    # HistGBM
     def make_gbm(learning_rate, max_iter, max_depth):
         return HistGradientBoostingClassifier(learning_rate=learning_rate,
             max_iter=max_iter, max_depth=max_depth, class_weight="balanced",
@@ -149,7 +149,7 @@ def main():
     results.append(evaluate_with_tuned_threshold("HistGBM_Network", clf, X_val, y_val, X_te, y_te, "Test", OUT_DIR, save_calibration_csv=True))
     saved["gbm_network"] = {"preprocessor": pre, "model": clf}
 
-    # ── XGBoost ───────────────────────────────────────────────────────────────
+    # XGBoost
     if HAS_XGB:
         def make_xgb(n_estimators, max_depth, learning_rate, subsample=0.8):
             return XGBClassifier(n_estimators=n_estimators, max_depth=max_depth,
@@ -170,7 +170,7 @@ def main():
         print(fi.head(20).round(5).to_string())
         saved["xgb_network"] = {"preprocessor": pre, "model": clf}
 
-    # ── LightGBM ──────────────────────────────────────────────────────────────
+    # LightGBM
     if HAS_LGBM:
         def make_lgbm(num_leaves, max_depth, learning_rate, n_estimators):
             return LGBMClassifier(num_leaves=num_leaves, max_depth=max_depth,
@@ -185,7 +185,7 @@ def main():
         results.append(evaluate_with_tuned_threshold("LightGBM_Network", clf, X_val, y_val, X_te, y_te, "Test", OUT_DIR, save_calibration_csv=True))
         saved["lgbm_network"] = {"preprocessor": pre, "model": clf}
 
-    # ── Save ──────────────────────────────────────────────────────────────────
+    # Save
     for name, obj in saved.items():
         joblib.dump(obj, os.path.join(OUT_DIR, f"{name}.pkl"))
 
@@ -193,8 +193,8 @@ def main():
     with open(os.path.join(OUT_DIR, "network_results.json"), "w") as f:
         json.dump(results, f, indent=2)
 
-    # ── Network lift comparison ───────────────────────────────────────────────
-    print(f"\n{'='*60}\n  NETWORK LIFT SUMMARY\n{'='*60}")
+    # Network lift comparison
+    print("\nNETWORK LIFT SUMMARY")
     net_by_name = {r["model"].replace("_Network", ""): r for r in results}
     for br in baseline:
         base_name = br["model"].replace("_Baseline", "")

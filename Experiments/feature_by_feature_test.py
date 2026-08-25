@@ -7,8 +7,8 @@ firm_age_at_first_round, sector, mean_pagerank, missing_evc).
 The original feature reduction (26 -> 6) was done via forward/backward
 selection on validation ROC-AUC alone, with no formal significance testing
 and no per-feature audit trail preserved. This re-tests every dropped
-candidate individually -- CONTROL (frozen 6-feature set) + ONE candidate at
-a time, for all 5 tabular model classes -- and runs a paired DeLong test
+candidate individually -- the control (frozen 6-feature set) plus one
+candidate at a time, for all 5 tabular model classes -- and runs a paired DeLong test
 (same test set, same target, reused from significance_tests.py) against the
 CONTROL model of the same class, so "adds performance" means something
 statistically precise, not just a higher point estimate.
@@ -193,17 +193,17 @@ def train_variant(variant_name: str, df: pd.DataFrame,
 
 def main():
     set_global_seed()
-    print(f"{'='*70}\n  FEATURE-BY-FEATURE TEST ({len(CANDIDATES)} candidates vs. frozen control)\n{'='*70}")
+    print(f"\nFeature-by-feature test ({len(CANDIDATES)} candidates vs. frozen control)")
 
     df = build_data()
 
-    print("\n--- CONTROL (frozen 6-feature network set) ---")
+    print("\nControl (frozen 6-feature network set)")
     control_results, control_probs, y_te = train_variant("control", df, [], [], [])
     control_auc = {r["model_class"]: r["roc_auc"] for r in control_results}
 
     all_rows = []
     for name, kind in CANDIDATES:
-        print(f"\n--- Candidate: {name} ({kind}) ---")
+        print(f"\nCandidate: {name} ({kind})")
         extra_num = [name] if kind == "num" else []
         extra_bin = [name] if kind == "bin" else []
         extra_cat = [name] if kind == "cat" else []
@@ -226,7 +226,7 @@ def main():
     res = pd.DataFrame(all_rows)
     res.to_csv(os.path.join(OUT_DIR, "feature_by_feature_results.csv"), index=False)
 
-    print(f"\n{'='*70}\n  SUMMARY -- sorted by mean delta across model classes\n{'='*70}")
+    print("\nSummary -- sorted by mean delta across model classes")
     summary = res.groupby(["candidate", "kind"]).agg(
         mean_delta=("delta", "mean"),
         max_delta=("delta", "max"),
@@ -236,7 +236,7 @@ def main():
     print(summary.round(4).to_string())
 
     n_sig_positive = res[(res["significant_at_05"]) & (res["delta"] > 0)]
-    print(f"\nCandidate x model-class cells that are BOTH significant AND positive: {len(n_sig_positive)}")
+    print(f"\nCandidate x model-class cells that are both significant and positive: {len(n_sig_positive)}")
     if len(n_sig_positive):
         print(n_sig_positive[["candidate", "model_class", "delta", "delong_p"]].to_string(index=False))
     else:

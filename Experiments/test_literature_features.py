@@ -1,12 +1,12 @@
 """
 Experiments/test_literature_features.py -- standalone, read-only test of
 three literature-motivated candidate features against the frozen network
-model feature set (script 05). Does NOT modify pipeline_core.py or any
+model feature set (script 05). Does not modify pipeline_core.py or any
 numbered Scripts/ file -- everything here is additive and self-contained.
 Not wired into the main pipeline or the final report (script 12).
 
 Candidates tested (see Dissertation Literature Review.rtf):
-  1. n_investors_first_round -- the startup's OWN bipartite degree (Esposito
+  1. n_investors_first_round -- the startup's own bipartite degree (Esposito
      et al. 2022: startup centrality matters, not just investor centrality).
      Already computed by script 04, just never included in the reduced
      feature set -- no new computation needed here.
@@ -80,7 +80,7 @@ DATE_COL     = "first_deal_date"
 RANDOM_STATE = SEED
 
 
-# ── Build the three candidate features (additive only) ───────────────────────
+# Build the three candidate features (additive only)
 def build_candidate_features() -> pd.DataFrame:
     firms = pd.read_parquet(os.path.join(DATA, "firms_with_network_T7.parquet"))
     deals = pd.read_parquet(os.path.join(DATA, "deals.parquet"))
@@ -94,14 +94,14 @@ def build_candidate_features() -> pd.DataFrame:
     die_fp = die_fp.drop_duplicates(subset=["company_name", "investor_org_id"])
     print(f"Startup-investor pairs at anchor: {len(die_fp):,}")
 
-    # -- Candidate 2: mean_weighted_degree (tie strength) --------------------
+    # Candidate 2: mean_weighted_degree (tie strength)
     snap = pd.read_parquet(os.path.join(DATA, "investor_features_by_snapshot.parquet"))
     die_fp_wd = die_fp.merge(
         snap[["investor_org_id", "snapshot_date", "weighted_degree"]],
         on=["investor_org_id", "snapshot_date"], how="left")
     wd_agg = die_fp_wd.groupby("company_name")["weighted_degree"].mean().rename("mean_weighted_degree")
 
-    # -- Candidate 3: mean_community_share (Louvain community size) ----------
+    # Candidate 3: mean_community_share (Louvain community size)
     needed_snaps = sorted(firms["snapshot_date"].dropna().unique())
     print(f"\nComputing Louvain communities for {len(needed_snaps)} snapshots...")
     community_rows = []
@@ -145,7 +145,7 @@ def _finalize_features(df: pd.DataFrame, num_cols: list) -> pd.DataFrame:
     return df
 
 
-# ── Train + evaluate one feature-set variant ──────────────────────────────────
+# Train + evaluate one feature-set variant
 def train_and_eval_variant(variant_name: str, df: pd.DataFrame, extra_network_cols: list) -> list:
     """extra_network_cols is the network-specific numeric columns for this
     variant (e.g. ["mean_pagerank"] for control) -- BASELINE_NUM_COLS is
@@ -231,7 +231,7 @@ def train_and_eval_variant(variant_name: str, df: pd.DataFrame, extra_network_co
 
 def main():
     set_global_seed()
-    print(f"{'='*70}\n  LITERATURE-MOTIVATED FEATURE TEST (exploratory, isolated)\n{'='*70}")
+    print("\nLiterature-motivated feature test (exploratory, isolated)")
 
     firms = build_candidate_features()
 
@@ -246,14 +246,14 @@ def main():
 
     all_results = []
     for name, num_cols in variants.items():
-        print(f"\n{'-'*70}\n  Variant: {name}  (network num cols = {num_cols})\n{'-'*70}")
+        print(f"\nVariant: {name}  (network num cols = {num_cols})")
         all_results.extend(train_and_eval_variant(name, firms, num_cols))
 
     res = pd.DataFrame(all_results)
     res.to_csv(os.path.join(OUT_DIR, "literature_feature_test_results.csv"), index=False)
 
-    # ── Summary: best model per variant + delta vs control ───────────────────
-    print(f"\n{'='*70}\n  SUMMARY (best model per variant, by val threshold F1 tie-broken on ROC-AUC)\n{'='*70}")
+    # Summary: best model per variant + delta vs control
+    print("\nSummary (best model per variant, by val threshold F1 tie-broken on ROC-AUC)")
     control_best = res[res["variant"] == "control"].loc[
         res[res["variant"] == "control"]["roc_auc"].idxmax()]
     print(f"  {'Variant':<15s} {'Best model':<25s} {'ROC-AUC':>8s} {'ΔvsCtrl':>9s} {'F1':>8s} {'ΔvsCtrl':>9s}")

@@ -8,10 +8,10 @@ Output contract matches script 05 (network_results.csv/json,
 calibration_*.png, saved model) so script 14 can ingest it with minimal
 changes.
 
-This is a clean-graph BENCHMARK, run separately from and preserving the
-existing tabular network model (script 05) untouched, per
-ROBUSTNESS_REFRAMING_PLAN.md requirement E ("preserve the original
-clean-graph benchmark, wrap don't replace").
+This is a clean-graph benchmark, run separately from the existing tabular
+network model (script 05), which it leaves untouched: the original
+clean-graph benchmark is preserved rather than replaced, so this script
+adds a new comparison point instead of overwriting prior results.
 """
 
 import os
@@ -103,7 +103,7 @@ def evaluate_model(model, val_data, test_data, tag, out_dir):
 def main():
     set_global_seed()
 
-    print(f"{'='*60}\n  HETEROGENEOUS GNN MODEL (T={T_YEARS}y)\n{'='*60}")
+    print(f"\nHeterogeneous GNN model (T={T_YEARS}y)")
 
     train_data = torch.load(os.path.join(GRAPH_DIR, "train_graph.pt"), weights_only=False)
     val_data   = torch.load(os.path.join(GRAPH_DIR, "val_graph.pt"), weights_only=False)

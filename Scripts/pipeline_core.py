@@ -6,22 +6,21 @@ Data source: Refinitiv (Yearly Company Deal Level Data, Exit Data, Company Datas
 
 Every temporal rule of the methodology lives here so that all scripts agree:
 
-  * Anchor date        : a startup's FIRST investment date, computed over the
-                         FULL deal history, never over a date-filtered subset.
-  * Label              : exit_within_T = 1 iff a successful exit occurs in
-                         (anchor, anchor + T years] AND on or before
-                         DATA_END_DATE. A 0 label is only assigned when the
-                         full T-year window is observable (window end <=
-                         DATA_END_DATE). Otherwise the row is right-censored
-                         and excluded from binary classification.
-  * Graph snapshots    : co-investment graphs are built from deals with
-                         Investment Date <= snapshot date only. Each startup is
-                         assigned the latest snapshot <= its anchor date.
-  * Temporal split     : train/val/test are disjoint, chronologically ordered
-                         blocks of startups by anchor date.
-  * Preprocessing      : fit_preprocessor() must only ever be called on the
-                         training split; transform_preprocessor() applies the
-                         frozen transformer to val/test.
+  * Anchor date: a startup's first investment date, computed over the full
+    deal history, never over a date-filtered subset.
+  * Label: exit_within_T = 1 iff a successful exit occurs in (anchor,
+    anchor + T years] and on or before DATA_END_DATE. A 0 label is only
+    assigned when the full T-year window is observable (window end <=
+    DATA_END_DATE); otherwise the row is right-censored and excluded from
+    binary classification.
+  * Graph snapshots: co-investment graphs are built from deals with
+    Investment Date <= snapshot date only. Each startup is assigned the
+    latest snapshot <= its anchor date.
+  * Temporal split: train/val/test are disjoint, chronologically ordered
+    blocks of startups by anchor date.
+  * Preprocessing: fit_preprocessor() must only ever be called on the
+    training split; transform_preprocessor() applies the frozen transformer
+    to val/test.
 """
 
 from __future__ import annotations
@@ -40,9 +39,7 @@ from sklearn.metrics import (
 )
 from sklearn.calibration import calibration_curve
 
-# ════════════════════════════════════════════════════════════════════════════
-#  Refinitiv column name mappings
-# ════════════════════════════════════════════════════════════════════════════
+# Refinitiv column name mappings.
 # These map Refinitiv's verbose column names to short internal names used
 # throughout the pipeline.
 
@@ -109,40 +106,37 @@ EXIT_COL_MAP = {
     "Exit Portfolio Company Nation\n('|')":         "exit_nation",
 }
 
-# ════════════════════════════════════════════════════════════════════════════
-#  Central configuration — single source of truth for all scripts
-# ════════════════════════════════════════════════════════════════════════════
+# Central configuration. Single source of truth for all scripts.
 
 SEED = 42
 
-# T=7yr fixed-horizon binary classification is a BENCHMARK operationalization
+# T=7yr fixed-horizon binary classification is a benchmark operationalization
 # of the underlying time-to-event outcome (exit timing/type), chosen for
-# comparability with prior graph-ML exit-prediction literature — not the
-# conceptually canonical framing. A survival/competing-risks framing would
-# use the full entry-cohort population without the ENTRY_END restriction
-# below; see ROBUSTNESS_REFRAMING_PLAN.md for that extension's scope.
+# comparability with prior graph-ML exit-prediction literature, rather than
+# the conceptually canonical framing. A survival/competing-risks framing
+# would use the full entry-cohort population without the ENTRY_END
+# restriction below.
 T_YEARS = 7
 
-# Entry window for the startup panel. ENTRY_END is chosen so that EVERY
+# Entry window for the startup panel. ENTRY_END is chosen so that every
 # eligible startup's T-year outcome window closes on or before DATA_END_DATE.
 # With data covering 2000-2024, ENTRY_END = 2017 ensures 2017 + 7 = 2024.
-# This restricts the classification sample to the OBSERVABILITY-ELIGIBLE
-# subsample (11,791 of 51,464 total companies, ~22.9%) — companies entering
+# This restricts the classification sample to the observability-eligible
+# subsample (11,791 of 51,464 total companies, ~22.9%): companies entering
 # 2018-2024 (the majority of the universe) are excluded solely because their
 # 7yr window hasn't closed yet, not for any data-quality reason. ENTRY_START
 # is deliberately kept at 2010 (not pushed back to match the data's full
 # 2000+ range) to preserve a single coherent vintage for the classification
-# task; the co-investment graph's HISTORY still draws on the full 2000+
-# range via build_coinvestment_snapshot (see SNAPSHOT_START below) -- see
-# ROBUSTNESS_REFRAMING_PLAN.md, "2000-2024 Data Extension" section.
+# task; the co-investment graph's history still draws on the full 2000+
+# range via build_coinvestment_snapshot (see SNAPSHOT_START below).
 ENTRY_START   = pd.Timestamp("2010-01-01")
 ENTRY_END     = pd.Timestamp("2017-12-31")
 DATA_END_DATE = pd.Timestamp("2024-12-31")
 
-# Chronological split boundaries on ANCHOR (first-deal) date.
-#   train : anchor <= TRAIN_END                  (2010-2013 cohorts)
-#   val   : TRAIN_END < anchor <= VAL_END        (2014-2015 cohorts)
-#   test  : VAL_END   < anchor <= ENTRY_END      (2016-2017 cohorts)
+# Chronological split boundaries on anchor (first-deal) date.
+#   train : anchor <= TRAIN_END             (2010-2013 cohorts)
+#   val   : TRAIN_END < anchor <= VAL_END   (2014-2015 cohorts)
+#   test  : VAL_END   < anchor <= ENTRY_END (2016-2017 cohorts)
 TRAIN_END = pd.Timestamp("2013-12-31")
 VAL_END   = pd.Timestamp("2015-12-31")
 
@@ -152,19 +146,6 @@ SUCCESS_EXIT_TYPES = ("IPO", "Merger", "Secondary Sales")
 # Company Status values from the deal data that indicate successful exit.
 SUCCESS_STATUS = {"Acquisition", "Pending Acquisition", "Went Public",
                   "Merger", "LBO", "In Registration"}
-
-# Company Status values indicating failure/shutdown (mirrors SUCCESS_STATUS).
-# Used only by the survival/competing-risks panel (survival_core.py) — the
-# fixed-horizon T=7 classification task above only distinguishes exit vs.
-# no-exit, not failure vs. ongoing.
-FAILURE_STATUS = {"Defunct", "Bankruptcy - Chapter 11", "Bankruptcy - Chapter 7"}
-
-# Entry floor for the survival panel only. NOT the same as ENTRY_START above,
-# which stays fixed at 2010-01-01 for the T=7 classification benchmark's
-# observability-eligible subsample. The survival panel uses the full
-# historical range the 2000-2024 data now supports, since duration models
-# handle variable follow-up length via right-censoring natively.
-SURV_ENTRY_START = pd.Timestamp("2000-01-01")
 
 # Snapshot grid for as-of-date graph construction.
 SNAPSHOT_FREQ  = "QE"
@@ -184,9 +165,7 @@ def set_global_seed(seed: int = SEED) -> None:
     np.random.seed(seed)
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  Data loading helpers
-# ════════════════════════════════════════════════════════════════════════════
+# Data loading helpers
 
 def load_and_rename_deals(path: str) -> pd.DataFrame:
     """Load the Yearly Company Deal Level Data and apply column renaming."""
@@ -210,9 +189,7 @@ def load_and_rename_exits(path: str) -> pd.DataFrame:
     return df
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  Anchor dates and anchor-time tabular features
-# ════════════════════════════════════════════════════════════════════════════
+# Anchor dates and anchor-time tabular features
 
 def build_anchor_dates(df_deals: pd.DataFrame) -> pd.DataFrame:
     """
@@ -305,9 +282,7 @@ def compute_tabular_features_for_startup(anchors: pd.DataFrame,
     return result
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  Exit labels with explicit right-censoring
-# ════════════════════════════════════════════════════════════════════════════
+# Exit labels with explicit right-censoring
 
 def build_exit_labels(df_firms: pd.DataFrame,
                       df_exits: pd.DataFrame,
@@ -411,9 +386,7 @@ def filter_classification_sample(df: pd.DataFrame, verbose: bool = True
     return out
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  Temporal split
-# ════════════════════════════════════════════════════════════════════════════
+# Temporal split
 
 def temporal_train_val_test_split(df: pd.DataFrame,
                                   train_end: pd.Timestamp = TRAIN_END,
@@ -439,9 +412,7 @@ def assert_temporal_split(train, val, test, date_col: str = "first_deal_date"):
     assert val[date_col].max() < test[date_col].min(), "val overlaps test in time"
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  As-of-date co-investment graph snapshots
-# ════════════════════════════════════════════════════════════════════════════
+# As-of-date co-investment graph snapshots
 
 def build_snapshot_dates(start: pd.Timestamp = SNAPSHOT_START,
                          end: pd.Timestamp = SNAPSHOT_END,
@@ -545,9 +516,7 @@ def compute_snapshot_metrics(G: nx.Graph,
     return pd.DataFrame(rows)
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  Leakage-safe preprocessing (fit on train ONLY)
-# ════════════════════════════════════════════════════════════════════════════
+# Leakage-safe preprocessing (fit on train ONLY)
 
 OHE_MIN_FREQ = 50
 
@@ -585,18 +554,15 @@ def preprocessor_feature_names(preprocessor: ColumnTransformer) -> list[str]:
     return names
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  Shared feature engineering (used by modelling scripts)
-# ════════════════════════════════════════════════════════════════════════════
+# Shared feature engineering (used by modelling scripts)
 
 # Reduced, literature-informed feature set (validated via forward/backward
-# selection + PageRank-preference literature review). Raw round size, deal
-# value, round number, syndicate size, round-stage/state categoricals, and
-# the size-missing flag were all found redundant or dead; the centrality
-# block was collapsed to PageRank alone. This is the SAME set every
-# modelling script (03, 05, 07, graph_core.py) uses -- previously each
-# hardcoded its own local copy since these constants lagged behind that
-# reduction; now they are the single source of truth again.
+# selection and a review of PageRank-preference literature). Raw round
+# size, deal value, round number, syndicate size, round-stage/state
+# categoricals, and the size-missing flag were all found redundant or dead;
+# the centrality block was collapsed to PageRank alone. Every modelling
+# script (03, 05, 07, graph_core.py) shares this exact set rather than
+# keeping its own local copy, so it can't drift out of sync.
 BASELINE_NUM_COLS = ["log_first_round_raised", "cohort_year", "firm_age_at_first_round"]
 NETWORK_NUM_COLS = ["mean_pagerank"]
 BASELINE_BINARY_COLS: list[str] = []
@@ -606,12 +572,12 @@ CAT_FEATURE_COLS = ["sector"]
 
 def engineer_common_covariates(df: pd.DataFrame,
                                date_col: str = "first_deal_date") -> pd.DataFrame:
-    """The reduced baseline covariates only -- no leakage assertions, no
-    label-based row filtering. Safe for ANY panel sharing this schema,
-    including ones without exit_within_T/right_censored semantics (e.g.
-    the survival panel in survival_core.py, which intentionally retains
-    censored rows). engineer_baseline_features() below layers the
-    classification-pipeline-specific guards on top of this."""
+    """The reduced baseline covariates only, with no leakage assertions and
+    no label-based row filtering. Safe for any panel sharing this schema,
+    including a survival-style panel that intentionally retains censored
+    rows rather than requiring exit_within_T/right_censored semantics.
+    engineer_baseline_features() below layers the classification-pipeline-
+    specific guards on top of this."""
     df = df.copy()
     df["log_first_round_raised"] = np.log1p(
         df["first_round_raised_mn"].clip(lower=0).fillna(0))
@@ -647,9 +613,7 @@ def engineer_network_features(df: pd.DataFrame,
     return df
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  Shared model-selection and evaluation helpers (used by 03, 05, 10)
-# ════════════════════════════════════════════════════════════════════════════
+# Shared model-selection and evaluation helpers (used by 03, 05, 10)
 
 def tune_on_val(make_fn, param_grid: list[dict], X_tr, y_tr, X_val, y_val):
     """Fit each config in param_grid on train, score on val, keep the best

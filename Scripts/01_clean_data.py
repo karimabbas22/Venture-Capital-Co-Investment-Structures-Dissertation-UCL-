@@ -1,17 +1,13 @@
 """
-01_clean_data.py — load raw Refinitiv XLSX files, sanity-check, and save
-clean parquets.
+01_clean_data.py — load the raw Refinitiv XLSX files, sanity-check them, and
+save clean parquets.
 
-Data sources
-────────────
-  1. Yearly Company Deal Level Data.xlsx  — one row per (startup, round, investor)
-  2. Exit Data 2010-2024 US Refinitiv.xlsx — one row per exit event
-  3. Company Datas.xlsx                    — company-level summary (supplementary)
+Reads three source files, all already US-only:
+  1. Yearly Company Deal Level Data.xlsx, one row per (startup, round, investor)
+  2. Exit Data 2010-2024 US Refinitiv.xlsx, one row per exit event
+  3. Company Datas.xlsx, a company-level summary used for supplementary fields
 
-All three files are already US-only.
-
-Outputs
-───────
+Writes:
   Data/processed/deals.parquet       cleaned deal-level data (renamed columns)
   Data/processed/exits.parquet       cleaned exit data (renamed columns)
   Data/processed/companies.parquet   company-level summary (optional enrichment)
@@ -34,7 +30,7 @@ DATA = os.path.join(ROOT, "Data")
 OUT  = os.path.join(ROOT, "Data", "processed")
 os.makedirs(OUT, exist_ok=True)
 
-# ── 1. Convert XLSX → CSV (convenience copies) ──────────────────────────────
+# Convert XLSX to CSV (convenience copies)
 _DOC_RE = re.compile(r"read\s*me|readme|notes?|instructions?|changelog", re.IGNORECASE)
 
 xlsx_files = sorted(
@@ -66,10 +62,8 @@ for filename in xlsx_files:
             df.to_csv(csv_path, index=False)
             print(f"Converted: {filename} [{sheet}] -> {os.path.basename(csv_path)}")
 
-# ── 2. Load and rename deal data ─────────────────────────────────────────────
-print(f"\n{'='*60}")
-print("  Loading Yearly Company Deal Level Data")
-print("="*60)
+# Load and rename deal data
+print("\nLoading Yearly Company Deal Level Data")
 deals = load_and_rename_deals(os.path.join(DATA, "Yearly Company Deal Level Data.xlsx"))
 print(f"Shape: {deals.shape}")
 print(f"Date range: {deals['investment_date'].min().date()} – {deals['investment_date'].max().date()}")
@@ -84,10 +78,8 @@ print(deals["round_stage"].value_counts(dropna=False).to_string())
 print(f"\nSector distribution (top 10):")
 print(deals["sector"].value_counts().head(10).to_string())
 
-# ── 3. Load and rename exit data ─────────────────────────────────────────────
-print(f"\n{'='*60}")
-print("  Loading Exit Data")
-print("="*60)
+# Load and rename exit data
+print("\nLoading Exit Data")
 exits = load_and_rename_exits(os.path.join(DATA, "Exit Data 2010-2024 US Refinitiv.xlsx"))
 print(f"Shape: {exits.shape}")
 print(f"Date range: {exits['exit_date'].min().date()} – {exits['exit_date'].max().date()}")
@@ -97,24 +89,20 @@ print(f"Missing exit_date: {exits['exit_date'].isna().sum()}")
 print(f"\nExit type distribution:")
 print(exits["exit_type"].value_counts().to_string())
 
-# ── 4. Company-level overlap ─────────────────────────────────────────────────
+# Company-level overlap
 deal_cos = set(deals["company_name"].unique())
 exit_cos = set(exits["company_name"].unique())
 overlap  = deal_cos & exit_cos
-print(f"\n{'='*60}")
-print("  Company overlap (deals ∩ exits)")
-print("="*60)
+print("\nCompany overlap (deals and exits)")
 print(f"Deal companies:  {len(deal_cos):,}")
 print(f"Exit companies:  {len(exit_cos):,}")
 print(f"Overlap:         {len(overlap):,}")
 
-# ── 5. Load company-level data (supplementary) ──────────────────────────────
-# TODO: evaluate whether Company Datas.xlsx adds value beyond the deal data.
-# For now, load and save for reference; it may provide founded date or
-# employee count as additional baseline features.
-print(f"\n{'='*60}")
-print("  Loading Company Datas (supplementary)")
-print("="*60)
+# Load company-level data (supplementary). Whether this file adds value
+# beyond the deal data is still an open question; for now it's loaded and
+# saved for reference, since it may provide founded date or employee count
+# as additional baseline features.
+print("\nLoading Company Datas (supplementary)")
 companies = pd.read_excel(os.path.join(DATA, "Company Datas.xlsx"))
 # Apply the same column renaming where columns match
 rename = {k: v for k, v in DEAL_COL_MAP.items() if k in companies.columns}
@@ -122,7 +110,7 @@ companies = companies.rename(columns=rename)
 print(f"Shape: {companies.shape}")
 print(f"Unique companies: {companies['company_name'].nunique():,}")
 
-# ── 6. Coerce mixed-type columns to string before parquet save ───────────────
+# Coerce mixed-type columns to string before parquet save
 for df_name, df_ in [("deals", deals), ("exits", exits), ("companies", companies)]:
     for col in df_.columns:
         if df_[col].dtype == object:
@@ -132,8 +120,7 @@ deals.to_parquet(os.path.join(OUT, "deals.parquet"), index=False)
 exits.to_parquet(os.path.join(OUT, "exits.parquet"), index=False)
 companies.to_parquet(os.path.join(OUT, "companies.parquet"), index=False)
 
-print(f"\n{'='*60}")
-print(f"Saved to {OUT}:")
+print(f"\nSaved to {OUT}:")
 print(f"  deals.parquet      ({deals.shape[0]:,} rows)")
 print(f"  exits.parquet      ({exits.shape[0]:,} rows)")
 print(f"  companies.parquet  ({companies.shape[0]:,} rows)")

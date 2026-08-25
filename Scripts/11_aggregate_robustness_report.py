@@ -3,12 +3,12 @@
 dissertation-ready tables and a single robustness-curve figure.
 
 Reads Data/processed/models/T7/perturbation/perturbation_summary.csv
-(tabular models, script 07) AND gnn_perturbation_summary.csv (GNN, script
+(tabular models, script 07) and gnn_perturbation_summary.csv (GNN, script
 10) -- both share an identical schema via stability_metrics.evaluate_stability(),
 so they concatenate directly -- and writes:
     robustness_summary_wide.csv   one row per (model, perturb_type, budget
                                    or hub_k), mean +/- std over seeds for
-                                   every stability metric, ACROSS all models
+                                   every stability metric, across all models
                                    (5 tabular + GNN)
     by_metric/{metric}.csv        one pivot table per metric (budget x model),
                                    for budget-indexed perturbation types only
@@ -28,8 +28,7 @@ Methodological note (also stated in script 10 and the final report): the
 GNN's edge/feature perturbations change message-passing topology only --
 investor features are not recomputed post-perturbation, unlike script 07's
 tabular protocol. GNN vs. tabular robustness numbers in the outputs below
-are NOT a like-for-like architecture comparison for this reason -- see
-ROBUSTNESS_REFRAMING_PLAN.md.
+are therefore not a like-for-like architecture comparison.
 """
 
 import os
@@ -56,11 +55,11 @@ METRICS = ["delta_roc_auc", "delta_pr_auc", "flip_rate", "mean_abs_delta_p",
            "spearman_rho", "jaccard_top25", "jaccard_top50", "jaccard_top100",
            "delta_brier", "reliability_curve_l2"]
 
-# preferential_edge_addition added here (revision-plan Phase 1.1): the
-# realistic counterpart to random_edge_addition, sampled by degree product
-# rather than uniformly. Panel layout below is sized dynamically off this
-# list's length so adding/removing a budget-indexed type doesn't require
-# touching the plotting code.
+# preferential_edge_addition added here: the realistic counterpart to
+# random_edge_addition, sampled by degree product rather than uniformly.
+# Panel layout below is sized dynamically off this list's length so
+# adding/removing a budget-indexed type doesn't require touching the
+# plotting code.
 BUDGET_TYPES = ["random_edge_deletion", "random_edge_addition",
                 "preferential_edge_addition",
                 "degree_aware_edge_deletion", "edge_rewiring"]
@@ -100,7 +99,7 @@ def main():
     df = pd.concat(frames, ignore_index=True)
     df = df[df["perturb_type"] != "clean"].copy()
 
-    print(f"{'='*70}\n  ROBUSTNESS AGGREGATION\n{'='*70}")
+    print("\nRobustness aggregation")
     print(f"Loaded {len(df):,} perturbation-scenario rows from {len(frames)} source file(s) "
           f"({df['model'].nunique()} models: {sorted(df['model'].unique())}, "
           f"{df['perturb_type'].nunique()} perturbation types)")
@@ -119,7 +118,7 @@ def main():
     wide.to_csv(wide_path, index=False)
     print(f"Wrote {wide_path}  ({len(wide)} rows)")
 
-    # ── One CSV per metric: budget x model pivot (budget-indexed types only) ──
+    # One CSV per metric: budget x model pivot (budget-indexed types only)
     budget_wide = wide[wide["perturb_type"] != "hub_removal"]
     for m in METRICS:
         pivot = budget_wide.pivot_table(
@@ -127,7 +126,7 @@ def main():
         pivot.to_csv(os.path.join(BY_METRIC_DIR, f"{m}.csv"))
     print(f"Wrote {len(METRICS)} per-metric CSVs → {BY_METRIC_DIR}")
 
-    # ── Budget-indexed robustness grid (one panel per perturbation type) ────
+    # Budget-indexed robustness grid (one panel per perturbation type).
     # Panel count/layout is derived from BUDGET_TYPES so it doesn't need to
     # be hand-adjusted when a type is added (as with preferential_edge_
     # addition here) or dropped.
@@ -179,15 +178,15 @@ def main():
                      "Prediction-flip rate under graph perturbation",
                      "robustness_grid_flip_rate.png")
 
-    # ── Perturbation-type comparison figure ─────────────────────────────────
-    # Companion to the grid above: instead of one panel per perturbation type
-    # with one line per model, this is one line per perturbation type, so all
-    # 5 types are directly comparable on shared axes. node_feature_noise is
-    # GNN-only (tabular "features" are graph-derived downstream, not stored
-    # node attributes), so GNN is the only model with all 5 types measured
-    # under an identical protocol -- shown alone in the left panel. The right
-    # panel averages the 4 shared types across the 5 tabular classifiers so
-    # the comparison isn't a 25-line spaghetti plot.
+    # Perturbation-type comparison figure. Companion to the grid above:
+    # instead of one panel per perturbation type with one line per model,
+    # this is one line per perturbation type, so all 5 types are directly
+    # comparable on shared axes. node_feature_noise is GNN-only (tabular
+    # "features" are graph-derived downstream, not stored node attributes),
+    # so GNN is the only model with all 5 types measured under an identical
+    # protocol -- shown alone in the left panel. The right panel averages
+    # the 4 shared types across the 5 tabular classifiers so the comparison
+    # isn't a 25-line spaghetti plot.
     all_ptypes = sorted(wide.loc[wide["perturb_type"] != "hub_removal", "perturb_type"].unique())
     ptype_colors = dict(zip(all_ptypes, plt.cm.tab10(np.linspace(0, 1, len(all_ptypes)))))
 
@@ -236,12 +235,11 @@ def main():
     plt.close(fig2)
     print(f"Wrote {fig2_path}")
 
-    # ── Hub-removal curves (dense K grid) ────────────────────────────────────
-    # The supervisor's explicit ask (revision plan F10/F11): with
-    # hub_removal_k densified to every integer 1-25 in experiment_config.json,
-    # this is now a real curve rather than 3 disconnected points. hub_removal
-    # is K-indexed (not budget-indexed) and deterministic (no seed loop), so
-    # there is no std band here -- each (model, K) cell is a single value.
+    # Hub-removal curves (dense K grid). With hub_removal_k densified to
+    # every integer 1-25 in experiment_config.json, this is now a real curve
+    # rather than 3 disconnected points. hub_removal is K-indexed (not
+    # budget-indexed) and deterministic (no seed loop), so there is no std
+    # band here -- each (model, K) cell is a single value.
     if has_hub:
         hub_wide = wide[wide["perturb_type"] == "hub_removal"].copy()
         hub_wide = hub_wide.sort_values("hub_k")
@@ -276,8 +274,8 @@ def main():
         plt.close(fig3)
         print(f"Wrote {fig3_path}")
 
-    # ── Console summary ──────────────────────────────────────────────────────
-    print(f"\n{'='*70}\n  HEADLINE FINDINGS (at max tested budget per type)\n{'='*70}")
+    # Console summary
+    print("\nHeadline findings (at max tested budget per type)")
     for ptype in BUDGET_TYPES:
         sub = wide[wide["perturb_type"] == ptype]
         if sub.empty:

@@ -1,12 +1,12 @@
 """
 Experiments/placebo_hub_removal.py -- placebo test for the hub-removal
-robustness finding, addressing a supervisor-review point: the existing
-hub-removal result (removing the top-K most-connected investors is far
-more damaging than random edge noise) is consistent with "centrality
-specifically matters," but is also consistent with a weaker, less
-interesting explanation -- "removing ANY K nodes from a sparse graph is
-this damaging, regardless of which K." Without a placebo, these two
-explanations are observationally confounded in the existing results.
+robustness finding: the existing hub-removal result (removing the top-K
+most-connected investors is far more damaging than random edge noise) is
+consistent with "centrality specifically matters," but is also consistent
+with a weaker, less interesting explanation -- "removing any K nodes from
+a sparse graph is this damaging, regardless of which K." Without a
+placebo, these two explanations are observationally confounded in the
+existing results.
 
 This script removes K RANDOM (non-hub) investors instead of the top-K by
 degree, at the same K grid as experiment_config.json's hub_removal_k
@@ -22,7 +22,7 @@ reuses perturbation_core.hub_removal() (which already accepts an arbitrary
 node-ID list, not just top-K-by-degree, so no new perturbation primitive
 is needed) and graph_core.remove_investor_nodes() unmodified.
 
-MUST run AFTER Scripts/11_aggregate_robustness_report.py -- this script's
+Must run after Scripts/11_aggregate_robustness_report.py -- this script's
 comparison step reads Data/processed/models/T7/perturbation/
 robustness_summary_wide.csv (written by script 11), and if 11 hasn't run
 against the densified hub_removal_k grid yet, that file is still the old
@@ -98,7 +98,7 @@ def aggregate_network_to_startup(die_fp: pd.DataFrame, inv_metrics: pd.DataFrame
 
 
 def run_tabular_placebo(cfg):
-    print(f"\n{'='*70}\n  TABULAR PLACEBO: random-K investor removal vs true hub removal\n{'='*70}")
+    print("\nTabular placebo: random-K investor removal vs true hub removal")
 
     models = {}
     for name, fname in MODEL_FILES.items():
@@ -184,7 +184,7 @@ COINV_RELATION = ("investor", "co_invests_with", "investor")
 
 
 def run_gnn_placebo(cfg):
-    print(f"\n{'='*70}\n  GNN PLACEBO: random-K investor node removal vs true hub removal\n{'='*70}")
+    print("\nGNN placebo: random-K investor node removal vs true hub removal")
 
     test_path = os.path.join(GRAPH_DIR, "test_graph.pt")
     model_path = os.path.join(MODEL_DIR, "gnn_model.pt")
@@ -235,7 +235,7 @@ def run_gnn_placebo(cfg):
 
 
 def compare_against_true_hub_removal(tabular_placebo, gnn_placebo):
-    print(f"\n{'='*70}\n  COMPARISON: true hub removal vs placebo random removal\n{'='*70}")
+    print("\nComparison: true hub removal vs placebo random removal")
 
     true_hub = pd.read_csv(os.path.join(PERT_DIR, "robustness_summary_wide.csv"))
     true_hub = true_hub[true_hub["perturb_type"] == "hub_removal"]

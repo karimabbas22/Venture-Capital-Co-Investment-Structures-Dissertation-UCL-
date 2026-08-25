@@ -1,9 +1,8 @@
 """
 02_build_startup_first_round_dataset.py — startup panel + exit label construction.
 
-Methodology
-───────────
-1. Anchor date = first investment date over the FULL deal history (2000-2024).
+Methodology:
+1. Anchor date = first investment date over the full deal history (2000-2024).
 2. Tabular features are anchor-time only: first-round size, deal value,
    syndicate size, round stage, sector. Post-anchor funding rounds are
    outcomes, not predictors.
@@ -13,19 +12,17 @@ Methodology
 4. ENTRY_END = 2017-12-31 so that every retained startup's 7-year window
    closes by DATA_END_DATE (2024-12-31).
 
-Outputs
-───────
+Outputs:
   Data/processed/firms_panel.parquet      eligible classification sample
   Data/processed/firms_panel_all.parquet  full entry-window panel incl.
                                           censored/inconsistent rows (audit)
 
-Note — survival-framing readiness: this script already computes exit_date,
+Note on survival-framing readiness: this script already computes exit_date,
 exit_type, and the anchor date for every startup, which is the same
 information a time-to-event / competing-risks framing would need
 (time_to_event = exit_date - anchor_date; event_observed = exit_date
-notna; event_type = exit_type). No new columns are required to build a
-descriptive survival extension on top of this dataset — see
-ROBUSTNESS_REFRAMING_PLAN.md, Section D.
+notna; event_type = exit_type). No new columns would be required to build a
+descriptive survival extension on top of this dataset.
 """
 
 import os
@@ -48,7 +45,7 @@ DATA = os.path.join(ROOT, "Data", "processed")
 def main():
     set_global_seed()
 
-    # ── 1. Load ──────────────────────────────────────────────────────────────
+    # Load
     deals = pd.read_parquet(os.path.join(DATA, "deals.parquet"))
     exits = pd.read_parquet(os.path.join(DATA, "exits.parquet"))
     print(f"Loaded deals: {len(deals):,} rows "
@@ -56,11 +53,11 @@ def main():
           f"{deals['investment_date'].max().date()})")
     print(f"Loaded exits: {len(exits):,} rows")
 
-    # ── 2. Anchor dates from full history ────────────────────────────────────
+    # Anchor dates from full history
     anchors = build_anchor_dates(deals)
     print(f"\nUnique startups (full history): {len(anchors):,}")
 
-    # Exclude companies whose TRUE first investment predates the deal data.
+    # Exclude companies whose actual first investment predates the deal data.
     # These companies had their Round 1 before 2010 — their first-round
     # investors are unobservable.
     n_pre_window = int(anchors["pre_window_first_round"].sum())
@@ -68,7 +65,7 @@ def main():
     anchors = anchors[~anchors["pre_window_first_round"]].copy()
     print(f"After excluding pre-window first rounds: {len(anchors):,}")
 
-    # ── 3. Entry-window eligibility on the TRUE anchor ───────────────────────
+    # Entry-window eligibility on the actual anchor
     in_window = (
         (anchors["first_deal_date"] >= ENTRY_START)
         & (anchors["first_deal_date"] <= ENTRY_END)
@@ -80,10 +77,10 @@ def main():
           f"{len(firms):,} startups retained "
           f"({n_pre:,} pre-window, {n_post:,} post-window excluded)")
 
-    # ── 4. Anchor-time tabular features ──────────────────────────────────────
+    # Anchor-time tabular features
     firms = compute_tabular_features_for_startup(firms, deals)
 
-    # ── 5. Exit labels + censoring ────────────────────────────────────────────
+    # Exit labels and censoring
     firms = build_exit_labels(firms, exits,
                               horizon_years=T_YEARS,
                               data_end_date=DATA_END_DATE,
@@ -98,7 +95,7 @@ def main():
           f"(should be 0 with ENTRY_END={ENTRY_END.date()})")
     print(f"exit_inconsistent: {int(firms['exit_inconsistent'].sum()):,}")
 
-    # ── 6. Filter to the eligible classification sample ──────────────────────
+    # Filter to the eligible classification sample
     print()
     firms_panel = filter_classification_sample(firms)
 
@@ -112,7 +109,7 @@ def main():
     print(firms_panel.loc[firms_panel["exit_within_T"] == 1, "exit_type"]
           .value_counts().to_string())
 
-    # ── 7. Save ───────────────────────────────────────────────────────────────
+    # Save
     firms.to_parquet(os.path.join(DATA, "firms_panel_all.parquet"), index=False)
     firms_panel.to_parquet(os.path.join(DATA, "firms_panel.parquet"), index=False)
     print(f"\nSaved firms_panel.parquet      ({firms_panel.shape[0]:,} rows, eligible only)")

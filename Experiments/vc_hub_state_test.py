@@ -39,7 +39,7 @@ TOP_HUB_STATES = {"California", "New York", "Massachusetts"}
 
 
 def main():
-    print(f"{'='*70}\n  VC-HUB-STATE TEST (coarse binary vs. raw 51-category company_state)\n{'='*70}")
+    print("\nVC-HUB-STATE TEST (coarse binary vs. raw 51-category company_state)")
 
     df = build_data()
     df["is_vc_hub_state"] = df["company_state"].isin(TOP_HUB_STATES).astype(int)
@@ -71,7 +71,7 @@ def main():
     res = pd.DataFrame(rows)
     res.to_csv(os.path.join(OUT_DIR, "vc_hub_state_test_results.csv"), index=False)
 
-    print(f"\n{'='*70}\n  SUMMARY\n{'='*70}")
+    print("\nSUMMARY")
     print(res[["model_class", "control_auc", "variant_auc", "delta", "delong_p", "significant_at_05"]]
           .to_string(index=False))
     print(f"\nMean delta across 5 models: {res['delta'].mean():+.4f}")

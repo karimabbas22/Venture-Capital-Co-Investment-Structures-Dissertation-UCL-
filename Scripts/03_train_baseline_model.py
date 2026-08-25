@@ -1,7 +1,7 @@
 """
-03_train_baseline_model.py — baseline model using ONLY non-network features.
+03_train_baseline_model.py — baseline model using only non-network features.
 
-This script establishes predictive power BEFORE adding the co-investment
+This script establishes predictive power before adding the co-investment
 graph (network model in script 05).
 
 Features (all observable at the startup's first VC round) — the reduced,
@@ -11,7 +11,7 @@ CAT_FEATURE_COLS, reused here and by 05/07/graph_core.py/14). Raw round
 size, deal value, round number, syndicate size, round-stage/state
 categoricals, and the size-missing flag were all found redundant or dead
 during feature reduction and dropped.
-─────────────────────────────────────────────────────────
+
   Numeric:
     - log_first_round_raised      (log1p of round equity at first round)
     - cohort_year                 (year of first deal, as numeric)
@@ -79,7 +79,7 @@ LABEL_COL    = "exit_within_T"
 DATE_COL     = "first_deal_date"
 RANDOM_STATE = SEED
 
-# ── Feature groups (NO network features — baseline only) ─────────────────────
+# Feature groups (no network features — baseline only).
 # The reduced, parsimonious set that survived forward/backward selection
 # (see pipeline_core.py BASELINE_NUM_COLS/CAT_FEATURE_COLS — single source
 # of truth, reused by graph_core.py too).
@@ -95,7 +95,7 @@ FORBIDDEN_FEATURES = {
 
 def load_and_inspect(path: str) -> pd.DataFrame:
     df = pd.read_parquet(path)
-    print(f"{'='*60}\n  BASELINE DATASET  (T={HORIZON}y)\n{'='*60}")
+    print(f"\nBASELINE DATASET (T={HORIZON}y)")
     print(f"Shape      : {df.shape}")
     print(f"Date range : {df[DATE_COL].min().date()} → {df[DATE_COL].max().date()}")
     vc = df[LABEL_COL].value_counts()
@@ -157,8 +157,8 @@ def main():
     results = []
     saved = {}
 
-    # ── Logistic Regression ───────────────────────────────────────────────────
-    print(f"\n{'='*60}\n  LOGISTIC REGRESSION (Baseline)\n{'='*60}")
+    # Logistic Regression
+    print("\nLOGISTIC REGRESSION (Baseline)")
 
     def make_lr(C):
         return LogisticRegression(C=C, class_weight="balanced",
@@ -175,8 +175,8 @@ def main():
     print_feature_importance("LogReg_Baseline", lr_clf, feat_names)
     saved["logreg_baseline"] = {"preprocessor": pre, "model": lr_clf}
 
-    # ── Random Forest ─────────────────────────────────────────────────────────
-    print(f"\n{'='*60}\n  RANDOM FOREST (Baseline)\n{'='*60}")
+    # Random Forest
+    print("\nRANDOM FOREST (Baseline)")
 
     def make_rf(max_depth, min_samples_leaf):
         return RandomForestClassifier(
@@ -195,8 +195,8 @@ def main():
     print_feature_importance("RandomForest_Baseline", rf_clf, feat_names)
     saved["rf_baseline"] = {"preprocessor": pre, "model": rf_clf}
 
-    # ── Hist Gradient Boosting ────────────────────────────────────────────────
-    print(f"\n{'='*60}\n  HIST GRADIENT BOOSTING (Baseline)\n{'='*60}")
+    # Hist Gradient Boosting
+    print("\nHIST GRADIENT BOOSTING (Baseline)")
 
     def make_gbm(learning_rate, max_iter, max_depth):
         return HistGradientBoostingClassifier(
@@ -215,9 +215,9 @@ def main():
     results.append(evaluate_with_tuned_threshold("HistGBM_Baseline", gbm_clf, X_val, y_val, X_te, y_te, "Test", OUT_DIR, save_calibration_csv=True))
     saved["gbm_baseline"] = {"preprocessor": pre, "model": gbm_clf}
 
-    # ── XGBoost ───────────────────────────────────────────────────────────────
+    # XGBoost
     if HAS_XGB:
-        print(f"\n{'='*60}\n  XGBOOST (Baseline)\n{'='*60}")
+        print("\nXGBOOST (Baseline)")
 
         def make_xgb(n_estimators, max_depth, learning_rate, subsample=0.8):
             return XGBClassifier(
@@ -240,9 +240,9 @@ def main():
         print_feature_importance("XGBoost_Baseline", xgb_clf, feat_names)
         saved["xgb_baseline"] = {"preprocessor": pre, "model": xgb_clf}
 
-    # ── LightGBM ──────────────────────────────────────────────────────────────
+    # LightGBM
     if HAS_LGBM:
-        print(f"\n{'='*60}\n  LIGHTGBM (Baseline)\n{'='*60}")
+        print("\nLIGHTGBM (Baseline)")
 
         def make_lgbm(num_leaves, max_depth, learning_rate, n_estimators):
             return LGBMClassifier(
@@ -264,7 +264,7 @@ def main():
         print_feature_importance("LightGBM_Baseline", lgbm_clf, feat_names)
         saved["lgbm_baseline"] = {"preprocessor": pre, "model": lgbm_clf}
 
-    # ── Save artefacts ────────────────────────────────────────────────────────
+    # Save artefacts
     for name, obj in saved.items():
         joblib.dump(obj, os.path.join(OUT_DIR, f"{name}.pkl"))
 
@@ -272,9 +272,9 @@ def main():
     with open(os.path.join(OUT_DIR, "baseline_results.json"), "w") as f:
         json.dump(results, f, indent=2)
 
-    # ── Summary ───────────────────────────────────────────────────────────────
+    # Summary
     best = max(results, key=lambda x: x["roc_auc"])
-    print(f"\n{'='*60}\n  BASELINE SUMMARY  (T={HORIZON}y)\n{'='*60}")
+    print(f"\nBASELINE SUMMARY (T={HORIZON}y)")
     print(f"  Best model : {best['model']} with ROC-AUC={best['roc_auc']:.4f}")
     print(f"\n  All results:")
     for r in sorted(results, key=lambda x: -x["roc_auc"]):

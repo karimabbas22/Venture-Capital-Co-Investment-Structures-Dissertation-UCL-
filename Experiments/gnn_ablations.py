@@ -5,7 +5,7 @@ about the RQ: is the GNN's (statistically insignificant, but nominally
 highest) clean-graph AUC edge actually coming from the co-investment
 network structure, or from something else?
 
-1. EDGE-TYPE ABLATION (the one that matters most): train with only the
+1. Edge-type ablation (the one that matters most): train with only the
    bipartite edges (invests_in / rev_invests_in), dropping co_invests_with
    entirely. If clean-graph AUC barely changes without the co-investment
    edges, the GNN's edge over tabular models isn't coming from the network
@@ -13,29 +13,29 @@ network structure, or from something else?
    startup-side features alone, routed through a message-passing
    architecture instead of a linear/tree model.
 
-   Implementation note: this does NOT touch the saved graph .pt files or
+   Implementation note: this does not touch the saved graph .pt files or
    gnn_model.py. torch_geometric.nn.HeteroConv.forward() only iterates
-   edge types present in ITS OWN `convs` dict (verified against the
+   edge types present in its own `convs` dict (verified against the
    installed library source before writing this script) -- any extra key
    in the edge_index_dict passed at call time that has no matching conv is
    silently skipped. So restricting HeteroGNN's `edge_types` constructor
    argument to the two bipartite relations is sufficient; the original,
    unmodified train/val/test HeteroData objects are reused as-is.
 
-2. INVESTOR NODE-FEATURE ABLATION (the natural pair to #1): keep all three
+2. Investor node-feature ablation (the natural pair to #1): keep all three
    relations, but replace investor nodes' 6 centrality-metric features
    with a constant (all-ones) vector, so the model can only use graph
-   TOPOLOGY via message passing, not the hand-computed centrality stats
+   topology via message passing, not the hand-computed centrality stats
    riding on top of it. Startup features are untouched. Run on in-memory
    deep copies of the saved graphs -- the saved .pt files are never
    overwritten.
 
-3. LAYER-DEPTH ABLATION: a 1-layer variant (drop conv2), defined as a new
-   class LOCAL to this script (gnn_model.py is not modified) that reuses
+3. Layer-depth ablation: a 1-layer variant (drop conv2), defined as a new
+   class local to this script (gnn_model.py is not modified) that reuses
    the same HeteroConv/SAGEConv building blocks and the same
    materialize()-compatible forward signature.
 
-All three reuse the EXACT training protocol from Scripts/09_train_gnn_model.py
+All three reuse the exact training protocol from Scripts/09_train_gnn_model.py
 (same 12-point hyperparameter grid, same early-stopping patience, same
 seed-reset-per-config, same optimizer/loss config) so the comparison to
 the production GNN (0.6582 clean-graph test ROC-AUC) is apples-to-apples,
@@ -199,7 +199,7 @@ def evaluate_and_compare(name, test_prob, y_test, full_model_prob):
 
 def main():
     set_global_seed()
-    print(f"{'='*70}\n  GNN ABLATIONS: edge-type, node-feature, layer-depth\n{'='*70}")
+    print("\nGNN ablations: edge-type, node-feature, layer-depth")
 
     train_data = torch.load(os.path.join(GRAPH_DIR, "train_graph.pt"), weights_only=False)
     val_data   = torch.load(os.path.join(GRAPH_DIR, "val_graph.pt"), weights_only=False)
@@ -210,7 +210,7 @@ def main():
     pos_weight = n_neg / n_pos if n_pos > 0 else 1.0
     y_test = test_data["startup"].y.numpy()
 
-    # ── Load the production GNN for the baseline comparison ────────────────
+    # Load the production GNN for the baseline comparison
     bundle = torch.load(os.path.join(MODEL_DIR, "gnn_model.pt"), weights_only=False)
     full_model = HeteroGNN(bundle["edge_types"], hidden_dim=bundle["params"]["hidden_dim"],
                            dropout=bundle["params"]["dropout"])
@@ -223,10 +223,8 @@ def main():
 
     results = []
 
-    # ═══════════════════════════════════════════════════════════════════
-    # 1. EDGE-TYPE ABLATION -- bipartite edges only, co_invests_with dropped
-    # ═══════════════════════════════════════════════════════════════════
-    print(f"\n{'-'*70}\n  1. EDGE-TYPE ABLATION (bipartite only, no co_invests_with)\n{'-'*70}")
+    # 1. Edge-type ablation -- bipartite edges only, co_invests_with dropped
+    print("\n1. Edge-type ablation (bipartite only, no co_invests_with)")
     bipartite_edge_types = [et for et in train_data.edge_types if et != COINV_RELATION]
     print(f"Edge types used: {bipartite_edge_types}")
 
@@ -239,10 +237,8 @@ def main():
     row1["val_roc_auc"] = round(float(val_auc1), 4)
     results.append(row1)
 
-    # ═══════════════════════════════════════════════════════════════════
-    # 2. INVESTOR NODE-FEATURE ABLATION -- constant investor features
-    # ═══════════════════════════════════════════════════════════════════
-    print(f"\n{'-'*70}\n  2. INVESTOR NODE-FEATURE ABLATION (constant investor.x, topology only)\n{'-'*70}")
+    # 2. Investor node-feature ablation -- constant investor features
+    print("\n2. Investor node-feature ablation (constant investor.x, topology only)")
     train_data2 = copy.deepcopy(train_data)
     val_data2   = copy.deepcopy(val_data)
     test_data2  = copy.deepcopy(test_data)
@@ -260,10 +256,8 @@ def main():
     row2["val_roc_auc"] = round(float(val_auc2), 4)
     results.append(row2)
 
-    # ═══════════════════════════════════════════════════════════════════
-    # 3. LAYER-DEPTH ABLATION -- 1-layer (conv2 dropped)
-    # ═══════════════════════════════════════════════════════════════════
-    print(f"\n{'-'*70}\n  3. LAYER-DEPTH ABLATION (1-layer, conv2 dropped)\n{'-'*70}")
+    # 3. Layer-depth ablation -- 1-layer (conv2 dropped)
+    print("\n3. Layer-depth ablation (1-layer, conv2 dropped)")
     build3 = lambda hd, dr: HeteroGNN1Layer(train_data.edge_types, hidden_dim=hd, dropout=dr)
     state3, params3, val_auc3 = run_grid(build3, train_data, val_data, pos_weight, "layer-depth")
     model3 = build_final_model(HeteroGNN1Layer, train_data.edge_types, params3, state3, train_data)
@@ -273,11 +267,11 @@ def main():
     row3["val_roc_auc"] = round(float(val_auc3), 4)
     results.append(row3)
 
-    # ── Save ─────────────────────────────────────────────────────────────
+    # Save
     res = pd.DataFrame(results)
     res.to_csv(os.path.join(OUT_DIR, "gnn_ablations_results.csv"), index=False)
 
-    print(f"\n{'='*70}\n  SUMMARY\n{'='*70}")
+    print("\nSummary")
     print(res[["ablation", "test_roc_auc", "test_pr_auc", "full_model_roc_auc",
               "delta_roc_auc", "delong_p", "significant_at_05"]].to_string(index=False))
     print(f"\nSaved -> {os.path.join(OUT_DIR, 'gnn_ablations_results.csv')}")
