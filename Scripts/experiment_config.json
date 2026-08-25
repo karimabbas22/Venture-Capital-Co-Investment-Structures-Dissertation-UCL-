@@ -1,0 +1,14 @@
+{
+  "budgets": [0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.10],
+  "seeds": [42, 43, 44, 45, 46],
+  "perturbation_types": [
+    "random_edge_deletion",
+    "random_edge_addition",
+    "preferential_edge_addition",
+    "degree_aware_edge_deletion",
+    "edge_rewiring"
+  ],
+  "hub_removal_k": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+  "topk_values": [25, 50, 100],
+  "flip_threshold": 0.5
+}
