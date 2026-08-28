@@ -579,8 +579,9 @@ def engineer_common_covariates(df: pd.DataFrame,
     engineer_baseline_features() below layers the classification-pipeline-
     specific guards on top of this."""
     df = df.copy()
-    df["log_first_round_raised"] = np.log1p(
-        df["first_round_raised_mn"].clip(lower=0).fillna(0))
+    raised = df["first_round_raised_mn"].clip(lower=0).fillna(0)
+    lo, hi = raised.quantile([0.01, 0.99])  # winsorize at 1st/99th pct: round sizes are heavily right-skewed
+    df["log_first_round_raised"] = np.log1p(raised.clip(lo, hi))
     df["cohort_year"] = df[date_col].dt.year
     df["firm_age_at_first_round"] = df["firm_age_at_first_round"].fillna(0).clip(lower=0)
     for c in CAT_FEATURE_COLS:
